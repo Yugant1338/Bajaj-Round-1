@@ -27,8 +27,7 @@ public class BajajR1Application implements CommandLineRunner {
 
     private final RestTemplate restTemplate;
 
-    // Change these values if you want different registration info for the generateWebhook call
-    private static final String NAME = "Yugant Chaudhury;
+    private static final String NAME = "Yugant Chaudhury";
     private static final String REGNO = "22BRS1338"; // your regNo
     private static final String EMAIL = "yugant.chaudhury2022@vitstudent.ac.in";
 
@@ -47,8 +46,6 @@ public class BajajR1Application implements CommandLineRunner {
     public void run(String... args) throws Exception {
         String generateUrl = System.getenv().getOrDefault("BFHL_GENERATE_URL",
                 "https://bfhldevapigw.healthrx.co.in/hiring/generateWebhook/JAVA");
-
-        // 1) Compose payload for generateWebhook
         Map<String, String> payload = new HashMap<>();
         payload.put("name", NAME);
         payload.put("regNo", REGNO);
@@ -77,7 +74,6 @@ public class BajajR1Application implements CommandLineRunner {
         System.out.println("Received webhook: " + genResp.getWebhook());
         System.out.println("Received accessToken (truncated): " + (genResp.getAccessToken().length() > 40 ? genResp.getAccessToken().substring(0,40) + "..." : genResp.getAccessToken()));
 
-        // 2) Determine question (odd/even) based on last two digits
         int lastTwo = extractLastTwoDigits(REGNO);
         boolean isOdd = (lastTwo % 2) == 1;
         String questionUrl = isOdd
@@ -86,7 +82,6 @@ public class BajajR1Application implements CommandLineRunner {
         System.out.println("Determined question: " + (isOdd ? "Question 1 (odd)" : "Question 2 (even)"));
         System.out.println("Question file URL (for your reference): " + questionUrl);
 
-        // Optional: attempt to save the question file (best effort)
         String downloadDir = System.getProperty("user.dir") + "/downloaded-questions";
         try {
             Files.createDirectories(Path.of(downloadDir));
@@ -96,8 +91,6 @@ public class BajajR1Application implements CommandLineRunner {
             // ignore download errors — not critical
         }
 
-        // 3) Get final SQL query to submit
-        // Priority: FINAL_QUERY env var -> src/main/resources/solution.sql -> fallback placeholder
         String finalQuery = System.getenv("FINAL_QUERY");
         if (!StringUtils.hasText(finalQuery)) {
             try {
@@ -116,11 +109,8 @@ public class BajajR1Application implements CommandLineRunner {
             finalQuery = "SELECT 'NO_SOLUTION_PROVIDED' AS note;";
         }
 
-        // 4) Submit finalQuery to webhook
         HttpHeaders submitHeaders = new HttpHeaders();
         submitHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-        // Authorization header scheme: default "Bearer". If the API expects raw token, set AUTH_SCHEME to empty string.
         String authScheme = System.getenv().getOrDefault("AUTH_SCHEME", "Bearer"); // set to "" if API expects token without prefix
         String authHeaderValue = (authScheme == null || authScheme.isBlank()) ? genResp.getAccessToken() : authScheme + " " + genResp.getAccessToken();
         submitHeaders.set("Authorization", authHeaderValue);
@@ -158,8 +148,6 @@ public class BajajR1Application implements CommandLineRunner {
             return 0;
         }
     }
-
-    // Helper: best-effort attempt to download google drive file (may fail if Drive blocks)
     private static String attemptDownloadGoogleDriveFile(String responseBody, String driveViewUrl, Path saveDir) {
         try {
             String fileId = null;
